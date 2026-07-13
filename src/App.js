@@ -1008,8 +1008,9 @@ const Terms = ({ goTo, fromSend, onAccept }) => (
 );
 
 // ── INBOX ──────────────────────────────────────────────────────────────────────
-const Inbox = ({ goTo, currency, isMinor=false, userId, username="yourname" }) => {
+const Inbox = ({ goTo, currency, isMinor = false, userId, username = "" }) => {
   const cur = currency || CURRENCIES.NG;
+  console.log("INBOX USERNAME:", username);
   const [messages,setMessages] = useState([]);
   const [loadingMsgs,setLoadingMsgs] = useState(true);
 
@@ -2651,8 +2652,21 @@ export default function App() {
   };
 
   const fetchProfile = async (uid) => {
-    const { data } = await supabase.from("profiles").select("*").eq("id", uid).single();
-    if (data) setProfile(data);
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", uid)
+      .single();
+  
+    console.log("PROFILE:", data);
+    console.log("PROFILE ERROR:", error);
+  
+    if (error) {
+      console.error(error);
+      return;
+    }
+  
+    setProfile(data);
   };
 
   useEffect(() => {
@@ -2700,10 +2714,23 @@ export default function App() {
   const screens = {
     landing:       <Landing goTo={goTo}/>,
     signup:        <Signup goTo={goTo} onSignupComplete={onSignupComplete}/>,
-    login:         <Login goTo={goTo}/>,
+    login: (
+      <Login
+        goTo={goTo}
+        onLoginComplete={async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+    
+          if (session?.user) {
+            await fetchProfile(session.user.id);
+          }
+    
+          goTo("inbox");
+        }}
+      />
+    ),
     forgot:        <ForgotPassword goTo={goTo}/>,
     terms:         <Terms goTo={goTo} fromSend={false}/>,
-    inbox:         <Inbox goTo={goTo} currency={currency} isMinor={isMinor} userId={session?.user?.id} username={profile?.username||"yourname"}/>,
+    inbox:         <Inbox goTo={goTo} currency={currency} isMinor={isMinor} userId={session?.user?.id} username={profile?.username ?? ""}/>,
     send:          <SendPage goTo={goTo} params={params} customization={customization} receiverCurrency={currency}/>,
     stats:         <Stats goTo={goTo} userId={session?.user?.id}/>,
     wallet:        <Wallet goTo={goTo} currency={currency} userId={session?.user?.id} userName={profile?.name}/>,
